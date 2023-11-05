@@ -38,6 +38,25 @@ app.get('/users', async (req, res) => {
   }
 });
 
+app.get('/posts', async (req, res) => {
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    const [rows, fields] = await connection.execute('SELECT * FROM posts'); // Replace with your table name
+    connection.end();
+    
+    // Calculate the total number of records
+    const totalCount = rows.length;
+
+    // Set the "X-Total-Count" header in the response
+    res.header('X-Total-Count', totalCount);
+
+    res.json(rows);
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 // Create a route to get a single user by ID
 app.get('/users/:id', async (req, res) => {
   try {
