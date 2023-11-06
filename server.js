@@ -1,6 +1,7 @@
 const express = require("express");
 const mysql = require("mysql2/promise");
 const cors = require("cors");
+const bodyParser = require('body-parser');
 
 const app = express();
 const port = 3000;
@@ -12,6 +13,7 @@ const corsOptions = {
 };
 
 // Enable CORS for all routes
+app.use(bodyParser.json());
 app.use(cors(corsOptions));
 
 const dbConfig = {
@@ -32,9 +34,7 @@ app.get("/users", async (req, res) => {
 
     // Set the "X-Total-Count" header in the response
     res.header({
-      // "X-Total-Count": totalCount,
       "Content-Range": totalCount,
-      // "Access-Control-Expose-Headers": "Content-Range",
     });
 
     res.json(rows);
@@ -54,8 +54,9 @@ app.get("/posts", async (req, res) => {
     const totalCount = rows.length;
 
     // Set the "X-Total-Count" header in the response
-    res.header("X-Total-Count", totalCount);
-    res.header("X-Total-Count", totalCount);
+    res.header({
+      "Content-Range": totalCount,
+    });
 
     res.json(rows);
   } catch (error) {
@@ -88,7 +89,9 @@ app.get("/users/:id", async (req, res) => {
       const totalCount = rows.length;
 
       // Set the "X-Total-Count" header in the response
-      res.header("X-Total-Count", totalCount);
+      res.header({
+      "Content-Range": totalCount,
+    });
       res.json({ user: rows[0] });
     }
   } catch (error) {
@@ -97,37 +100,23 @@ app.get("/users/:id", async (req, res) => {
   }
 });
 
-app.put("/users/:id", async (req, res) => {
-  try {
-    const userId = req.params.id; // Get the user ID from the URL parameter
+// Handle POST requests to create a new record
+app.post('/createUser', async (req, res) => {
+  const { name, email } = req.body;
 
-    console.log("check params", req.data);
+  const connection = await mysql.createConnection(dbConfig);
 
-    // Establish a connection to the MySQL database
-    const connection = await mysql.createConnection(dbConfig);
+  const insertQuery = 'INSERT INTO users (name, email) VALUES (?, ?)';
 
-    // Execute a SQL query to retrieve the user with the specified ID
-    const [rows] = await connection.execute("UPDATE users SET ? WHERE id = ?", [
-      userId,
-    ]);
-    connection.end();
-
-    if (rows.length === 0) {
-      // If no user with the specified ID is found, return a 404 response
-      res.status(404).json({ error: "User not found" });
+  connection.query(insertQuery, [name, email], (err, results) => {
+    if (err) {
+      console.error('Error creating record: ' + err);
+      res.status(500).json({ error: 'Error creating record' });
     } else {
-      // If a user is found, return the user data
-      // Calculate the total number of records
-      const totalCount = rows.length;
-
-      // Set the "X-Total-Count" header in the response
-      res.header("X-Total-Count", totalCount);
-      res.json({ user: rows[0] });
+      console.log('Record created successfully');
+      res.json({ message: 'Record created successfully' });
     }
-  } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
+  });
 });
 
 app.listen(port, () => {
